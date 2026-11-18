@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<!-- saved from url=(0045)https://rclepf.github.io/PersistenciaAndroid/ -->
+<html lang="pt-BR"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Persistência de Dados com SQLite Nativo</title>
+    <style>
+        :root {
+            --ink: #14171C;
+            --ink-soft: #1F242C;
+            --ink-line: #2B313B;
+            --bg: #EEF1F5;
+            --surface: #FFFFFF;
+            --line: #E2E6EB;
+            --text: #1B1E23;
+            --text-muted: #5B6470;
+            --api-color: #E3350D;
+            --arch-color: #2F6FED;
+            --async-color: #0D9488;
+            --db-color: #059669;
+            --code-bg: #0F1115;
+            --code-text: #D6DEE7;
+            --code-comment: #7A9F6E;
+            --focus-ring: #2F6FED;
+            --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-sans);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: var(--text);
+        }
+
+        a:focus-visible, button:focus-visible, .step-nav-link:focus-visible {
+            outline: 3px solid var(--focus-ring);
+            outline-offset: 2px;
+        }
+
+        .kw-arch { color: var(--arch-color); font-weight: 700; }
+        .kw-net { color: var(--api-color); font-weight: 700; }
+        .kw-async { color: var(--async-color); font-weight: 700; }
+        .kw-db { color: var(--db-color); font-weight: 700; }
+        strong { color: #000000; font-weight: 700; }
+        code {
+            font-family: var(--font-mono);
+            background: #E7EAEF;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.88em;
+        }
+
+        pre code { background: none; padding: 0; border-radius: 0; font-size: inherit; color: inherit; }
+
+        /* ---------- HERO ---------- */
+        header { background: var(--ink); padding: 3rem 1.2rem 2.6rem; }
+
+        .editor-window {
+            max-width: 720px;
+            margin: 0 auto;
+            background: var(--ink-soft);
+            border-radius: 10px;
+            border: 1px solid var(--ink-line);
+            overflow: hidden;
+        }
+
+        .editor-titlebar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #101317;
+            border-bottom: 1px solid var(--ink-line);
+        }
+
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .dot.d-api { background: var(--api-color); }
+        .dot.d-db { background: var(--db-color); }
+        .dot.d-async { background: var(--async-color); }
+
+        .editor-titlebar .filename { margin-left: 8px; font-family: var(--font-mono); font-size: 0.8rem; color: #7D8590; }
+
+        .editor-body { padding: 2.2rem 2rem 2.4rem; text-align: left; }
+        .editor-body .comment-line { font-family: var(--font-mono); font-size: 0.85rem; color: var(--code-comment); margin: 0 0 1rem 0; }
+
+        header h1 { margin: 0; font-size: 2.1rem; letter-spacing: -0.5px; font-weight: 700; color: #EDEFF2; transform: translateZ(0); }
+        header p.subtitle { font-size: 1.05rem; color: #AEB6C2; margin: 0.7rem 0 0 0; max-width: 56ch; }
+
+        /* ---------- NAV ---------- */
+        nav { background: var(--ink); padding: 0.7rem 1rem; position: sticky; top: 0; border-bottom: 1px solid var(--ink-line); z-index: 100; }
+
+        .nav-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            flex-wrap: nowrap;
+            gap: 1rem;
+        }
+
+        .nav-brand { font-family: var(--font-mono); font-weight: 600; color: #7D8590; font-size: 0.85rem; white-space: nowrap; padding-top: 0.5rem; margin-right: 0.4rem; }
+
+        .nav-links { display: flex; flex-wrap: nowrap; justify-content: flex-end; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+        .nav-links::-webkit-scrollbar { display: none; }
+
+        nav a.step-nav-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #C7CDD6;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.84rem;
+            white-space: nowrap;
+            padding: 0.5rem 0.6rem;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+            border-bottom: 2px solid transparent;
+        }
+
+        nav a.step-nav-link .nav-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+        nav a.step-nav-link:hover { color: #FFFFFF; background: rgba(255,255,255,0.06); }
+        nav a.step-nav-link.active { color: #FFFFFF; border-bottom-color: currentColor; }
+        nav a.step-nav-link.active .nav-dot { opacity: 1; }
+
+        .nav-toggle {
+            display: none;
+            background: none;
+            border: 1px solid var(--ink-line);
+            color: #C7CDD6;
+            border-radius: 6px;
+            padding: 0.4rem 0.6rem;
+            font-size: 1rem;
+            cursor: pointer;
+            font-family: var(--font-sans);
+        }
+
+        main { max-width: 980px; margin: 2.2rem auto; padding: 0 1.5rem; }
+
+        /* ---------- SECTIONS ---------- */
+        section {
+            background: var(--surface);
+            padding: 2.3rem 2.3rem 2.3rem 2rem;
+            border-radius: 8px;
+            margin-bottom: 1.6rem;
+            border: 1px solid var(--line);
+            border-left: 4px solid var(--text-muted);
+            scroll-margin-top: 76px;
+        }
+
+        section.acc-arch { border-left-color: var(--arch-color); }
+        section.acc-db { border-left-color: var(--db-color); }
+        section.acc-neutral { border-left-color: #A9B1BC; }
+
+        .file-tag { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+
+        h2 { font-size: 1.55rem; color: #14171C; margin-top: 0; margin-bottom: 1.3rem; font-weight: 700; letter-spacing: -0.3px; }
+        h3 { font-size: 1.18rem; color: #2A2E34; margin-top: 1.7rem; font-weight: 700; }
+        p, li { max-width: none; }
+
+        /* ---------- Diagrama de fluxo (escrita/leitura) ---------- */
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin: 1.2rem 0;
+            padding: 1.3rem 1.5rem;
+            background: #F2FBF7;
+            border-radius: 10px;
+            border: 1px solid var(--line);
+        }
+
+        .flow-label {
+            width: 100%;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            color: var(--db-color);
+            font-weight: 700;
+            margin-bottom: 0.6rem;
+        }
+
+        .flow-box {
+            padding: 0.8rem 1.05rem;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            text-align: center;
+            min-width: 110px;
+            border: 1px solid;
+        }
+
+        .flow-box.a { background: #FDECEA; color: var(--api-color); border-color: #F7D0CA; }
+        .flow-box.b { background: #E9F8F1; color: var(--db-color); border-color: #BEE8D6; }
+        .flow-box.c { background: #EAF1FE; color: var(--arch-color); border-color: #C9DBFB; }
+
+        .flow-arrow { font-size: 1.2rem; color: var(--text-muted); font-weight: 700; }
+
+        /* ---------- Tabela ---------- */
+        .data-table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.92rem; }
+        .data-table th, .data-table td { border: 1px solid var(--line); padding: 0.7rem 0.9rem; text-align: left; }
+        .data-table.accent-db th { background: #EAFBF3; color: var(--db-color); font-weight: 700; }
+
+        /* ---------- Blocos de código ---------- */
+        .code-container { position: relative; margin: 1.5rem 0; border-radius: 8px; overflow: hidden; }
+
+        .code-header {
+            background-color: #171A1F;
+            color: #8A93A0;
+            padding: 0.55rem 0.9rem;
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .code-header .dots { display: flex; gap: 5px; }
+        .code-header .dots .dot { width: 8px; height: 8px; }
+        .code-header .fname { flex: 1; }
+
+        .copy-btn {
+            background: #262B33;
+            color: #D6DEE7;
+            border: none;
+            border-radius: 5px;
+            padding: 0.25rem 0.6rem;
+            font-size: 0.76rem;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            transition: background 0.15s ease;
+        }
+
+        .copy-btn:hover { background: #333A44; }
+
+        pre {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 1.4rem 1.5rem;
+            margin: 0;
+            overflow-x: auto;
+            font-family: var(--font-mono);
+            font-size: 0.86rem;
+        }
+
+        ul { padding-left: 1.2rem; }
+        li { margin-bottom: 0.6rem; }
+
+        .tree-box { background: #FAFBFC; border: 1px solid var(--line); border-radius: 8px; padding: 1.3rem 1.5rem; margin: 1.2rem 0; }
+        .tree-box .tree-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 0.8rem; color: var(--text); }
+        .tree-pre {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 1.2rem 1.4rem;
+            border-radius: 8px;
+            margin: 0;
+            overflow-x: auto;
+            font-family: var(--font-mono);
+            font-size: 0.84rem;
+            line-height: 1.55;
+        }
+
+        .step-box {
+            background-color: #FAFBFC;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.8rem;
+            scroll-margin-top: 76px;
+        }
+
+        .step-box h3 {
+            margin-top: 0;
+            color: var(--text);
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .step-progress {
+            font-family: var(--font-mono);
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            background: #EEF1F5;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+        }
+
+        .checklist {
+            background: #F3F9F6;
+            border: 1px solid #CDE9DE;
+            border-left: 4px solid var(--async-color);
+            border-radius: 8px;
+            padding: 1.5rem 1.8rem;
+            margin-top: 1.5rem;
+        }
+
+        .checklist h3 { color: #0D7A5F; margin-top: 0; }
+        .checklist ul { list-style: none; padding-left: 0; }
+        .checklist li { padding-left: 1.8rem; position: relative; }
+        .checklist li::before { content: "✓"; position: absolute; left: 0; color: #0D7A5F; font-weight: 700; }
+
+        .tip-box {
+            background: #EAFBF3;
+            border-left: 4px solid var(--db-color);
+            padding: 1rem 1.3rem;
+            border-radius: 6px;
+            margin: 1.2rem 0;
+            font-size: 0.95rem;
+        }
+
+        .tip-box strong { color: #04703F; }
+
+        .warn-box {
+            background: #FFF4E5;
+            border-left: 4px solid #C97A0F;
+            padding: 1rem 1.3rem;
+            border-radius: 6px;
+            margin: 1.2rem 0;
+            font-size: 0.95rem;
+        }
+
+        .warn-box strong { color: #8A5A0C; }
+
+        /* ---------- CTA ---------- */
+        .cta-section { border: none; padding: 0; background: transparent; }
+
+        .terminal-window { background: var(--ink-soft); border-radius: 10px; border: 1px solid var(--ink-line); overflow: hidden; }
+        .terminal-titlebar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #101317; border-bottom: 1px solid var(--ink-line); }
+        .terminal-titlebar .filename { margin-left: 8px; font-family: var(--font-mono); font-size: 0.8rem; color: #7D8590; }
+        .terminal-body { padding: 2rem 2.2rem 2.3rem; font-family: var(--font-mono); }
+        .term-line { color: #9AA4B2; margin: 0 0 0.4rem 0; font-size: 0.92rem; }
+        .term-prompt { color: var(--async-color); font-weight: 700; margin-right: 8px; }
+
+        .term-output {
+            color: #C7CDD6;
+            font-family: var(--font-sans);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            max-width: 62ch;
+            margin: 0.6rem 0 1.6rem 0;
+        }
+
+        .term-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--db-color);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid transparent;
+        }
+
+        .term-cta:hover { border-bottom-color: var(--db-color); }
+        .cta-meta { margin-top: 1rem; font-size: 0.85rem; color: #7D8590; font-family: var(--font-sans); }
+
+        footer { text-align: center; padding: 2.6rem; background: var(--ink); color: #7D8590; font-size: 0.88rem; }
+
+        @media (max-width: 860px) {
+            header h1 { font-size: 1.6rem; }
+            .nav-toggle { display: inline-flex; }
+            .nav-links { display: none; width: 100%; flex-direction: column; align-items: stretch; overflow-x: visible; margin-top: 0.6rem; }
+            .nav-links.open { display: flex; }
+            .nav-inner { flex-wrap: wrap; gap: 0.4rem; }
+            .nav-brand { padding-top: 0; }
+            section { padding: 1.6rem; }
+        }
+
+        .erro-item { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 1.2rem; overflow: hidden; }
+        .erro-titulo {
+            background: #FDECEA;
+            padding: 0.8rem 1.1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: #A31D03;
+            font-weight: 700;
+            border-bottom: 1px solid var(--line);
+        }
+        .erro-corpo { padding: 1.1rem 1.3rem; font-size: 0.95rem; }
+        .erro-corpo p { margin-top: 0; }
+        .erro-corpo p:last-child { margin-bottom: 0; }
+        section.acc-fix { border-left-color: #C97A0F; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="editor-window">
+            <div class="editor-titlebar">
+                <span class="dot d-api"></span>
+                <span class="dot d-db"></span>
+                <span class="dot d-async"></span>
+                <span class="filename">biblioteca-android/DatabaseHelper.kt</span>
+            </div>
+            <div class="editor-body">
+                <p class="comment-line">// guia de aula — SQLite nativo, do zero</p>
+                <h1>Persistência de Dados com SQLite Nativo</h1>
+                <p class="subtitle">Criando um banco de dados do zero — SQLiteOpenHelper, ContentValues e Cursor — sem depender de nenhuma biblioteca externa.</p>
+            </div>
+        </div>
+    </header>
+
+    <nav>
+        <div class="nav-inner">
+            <span class="nav-brand">biblioteca-android/</span>
+            <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="navLinks">Menu</button>
+            <div class="nav-links" id="navLinks">
+                <a class="step-nav-link" href="https://rclepf.github.io/PersistenciaAndroid/#persistencia"><span class="nav-dot"></span>Persistência</a>
+                <a class="step-nav-link" href="https://rclepf.github.io/PersistenciaAndroid/#sqlite-nativo"><span class="nav-dot"></span>SQLite Nativo</a>
+                <a class="step-nav-link" href="https://rclepf.github.io/PersistenciaAndroid/#repository-manual"><span class="nav-dot"></span>Repository Manual</a>
+                <a class="step-nav-link" href="https://rclepf.github.io/PersistenciaAndroid/#erros"><span class="nav-dot"></span>Erros Comuns</a>
+                <a class="step-nav-link" href="https://rclepf.github.io/PersistenciaAndroid/#livecoding"><span class="nav-dot"></span>Live Coding</a>
+                <a class="step-nav-link" href="https://rclepf.github.io/PersistenciaAndroid/#atividade-cta"><span class="nav-dot"></span>Atividade</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+
+        <section id="persistencia" class="acc-db">
+            <div class="file-tag">01_persistencia.md</div>
+            <h2>Dados que Nunca Saem do Aparelho</h2>
+            <p>Nas aulas de <span class="kw-net">Consumo de APIs</span>, os dados vinham de um servidor: Retrofit, JSON, Coroutines para não travar a Main Thread. Hoje é o oposto — nenhum byte entra ou sai pela internet. Tudo vive dentro de um banco <span class="kw-db">SQLite</span>, criado por vocês mesmos, com código.</p>
+            <p>Isso não é um passo atrás. Apps de agenda, notas, listas de tarefas e catálogos pessoais funcionam assim: o dado é do aparelho, ponto final. E entender como o SQLite funciona por baixo é o que faz uma biblioteca como o Room (que vocês vão encontrar mais pra frente) deixar de parecer mágica.</p>
+
+            <h3>O que muda na arquitetura</h3>
+            <p>O <span class="kw-arch">Repository</span> continua cumprindo o mesmo papel de sempre: isolar o ViewModel de saber <em>como</em> os dados são guardados. A diferença é que, hoje, não existe nenhuma biblioteca fazendo esse trabalho por vocês — o Repository fala diretamente com o <code>SQLiteOpenHelper</code>.</p>
+
+            <div class="tip-box">
+                <strong>Por que isso importa:</strong> o Room (que existe como biblioteca pronta) faz exatamente o que vamos fazer hoje à mão — só que gerado automaticamente a partir de anotações. Depois de ver o "motor" por dentro, a abstração do Room vai fazer muito mais sentido.
+            </div>
+
+            <h3>As formas de guardar dados no Android</h3>
+            <p>SQLite não é a única opção — e escolher errado é um problema comum. Cada mecanismo resolve um tipo de necessidade:</p>
+            <table class="data-table accent-db">
+                <thead><tr><th>Mecanismo</th><th>Para que serve</th><th>Quando não usar</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><strong>SharedPreferences</strong><br><small>(e o mais moderno DataStore)</small></td>
+                        <td>Guardar poucos valores simples: se o modo escuro está ligado, o nome do último usuário, um contador.</td>
+                        <td>Não serve para listas ou registros relacionados — não há como fazer buscas ou ordenação.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Arquivos</strong><br><small>(texto, JSON, imagens)</small></td>
+                        <td>Conteúdo grande e único: uma foto, um PDF baixado, um arquivo de log.</td>
+                        <td>Consultar "todos os livros de 1899" exigiria abrir e percorrer o arquivo inteiro na mão.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>SQLite</strong><br><small>(banco relacional)</small></td>
+                        <td>Muitos registros estruturados, com busca, filtro, ordenação e relações entre tabelas.</td>
+                        <td>Exagero para guardar uma única preferência de usuário.</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>Nossa Biblioteca guarda vários livros, com título, autor e ano — e vai precisar listá-los ordenados. É exatamente o caso de uso do SQLite.</p>
+
+            <h3>Por que o SQLite está em toda parte</h3>
+            <p>O SQLite não é uma tecnologia específica do Android: é um banco de dados que roda dentro do próprio aplicativo, sem servidor separado, e está embarcado em praticamente todo sistema moderno — navegadores, sistemas operacionais de celular e desktop, e uma enorme variedade de aplicativos. É provavelmente o banco de dados mais distribuído do mundo, justamente por ser leve e não exigir instalação.</p>
+            <p>No Android, ele vem incluído no próprio sistema: por isso esta aula não adiciona <strong>nenhuma dependência nova</strong> ao projeto. As classes que vamos usar já estão disponíveis desde a primeira versão do Android.</p>
+
+            <div class="tip-box"><strong>Consequência prática disso:</strong> o que você aprender hoje sobre tabelas, <code>INSERT</code> e <code>SELECT</code> não vale só para Android. É o mesmo SQL usado em back-end, em análise de dados e em qualquer banco relacional — é um conhecimento que atravessa a carreira inteira, não uma técnica isolada de uma plataforma.</div>
+
+            <h3>Por que aprender o modo manual antes do Room</h3>
+            <p>Existe um caminho mais curto: usar o Room desde o começo e nunca escrever SQL. Muitos tutoriais fazem isso. O problema aparece quando algo dá errado — e sempre dá.</p>
+            <ul>
+                <li>Quando o Room lançar um erro de <em>migração de schema</em>, você precisa entender que existe uma tabela com estrutura fixa por trás.</li>
+                <li>Quando uma consulta ficar lenta, a solução envolve entender índices e o SQL gerado — não a anotação.</li>
+                <li>Quando precisar de uma consulta complexa, o Room vai pedir que você escreva o SQL na mão dentro de uma anotação <code>@Query</code>.</li>
+            </ul>
+            <p>Em outras palavras: o Room economiza digitação, mas não dispensa o entendimento. Fazer uma vez à mão é o que transforma o Room de "mágica que às vezes falha" em "ferramenta que eu sei o que está fazendo".</p>
+        </section>
+
+        <section id="sqlite-nativo" class="acc-db">
+            <div class="file-tag">02_sqlite_nativo.kt</div>
+            <h2>SQLiteOpenHelper: o Coração do Banco</h2>
+            <p>O Android já inclui um motor SQLite completo — não é preciso adicionar nenhuma biblioteca. A classe <code>SQLiteOpenHelper</code> gerencia o ciclo de vida do banco: criação, versão e atualização de schema.</p>
+
+            <table class="data-table accent-db">
+                <thead><tr><th>Método</th><th>Quando é chamado</th></tr></thead>
+                <tbody>
+                    <tr><td><code>onCreate(db)</code></td><td>Uma única vez — na primeira vez que o app roda e o arquivo do banco ainda não existe.</td></tr>
+                    <tr><td><code>onUpgrade(db, old, new)</code></td><td>Quando o número da versão do banco aumenta — usado para migrar o schema.</td></tr>
+                </tbody>
+            </table>
+
+            <p>É dentro de <code>onCreate()</code> que vocês escrevem, à mão, o SQL que cria a tabela:</p>
+
+            <div class="code-container">
+                <div class="code-header">
+                    <span class="dots"><span class="dot d-api"></span><span class="dot d-db"></span><span class="dot d-async"></span></span>
+                    <span class="fname">SQL</span>
+                    <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+                </div>
+<pre><code>CREATE TABLE livros (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    titulo TEXT NOT NULL,
+    autor TEXT NOT NULL,
+    ano INTEGER NOT NULL
+)</code></pre>
+            </div>
+
+            <div class="warn-box">
+                <strong>Atenção com <code>onUpgrade()</code>:</strong> se vocês mudarem a tabela (adicionar uma coluna, por exemplo) e não aumentarem <code>DATABASE_VERSION</code>, o Android não vai chamar <code>onUpgrade()</code> — e o app vai continuar rodando com o schema antigo, gerando erros confusos de "coluna não existe".
+            </div>
+
+            <h3>O que acontece de fato quando o Android chama onCreate() e onUpgrade()</h3>
+            <p>O arquivo do banco (<code>biblioteca.db</code>) fica salvo no armazenamento interno do celular, fora do controle direto do seu código — o <code>SQLiteOpenHelper</code> só entra em ação quando alguém pede <code>writableDatabase</code> ou <code>readableDatabase</code> pela primeira vez. Nesse momento, ele checa duas coisas:</p>
+            <ul>
+                <li><strong>O arquivo do banco já existe?</strong> Se não — primeira instalação do app — ele cria o arquivo do zero e chama <code>onCreate()</code>.</li>
+                <li><strong>A versão salva no arquivo é menor que <code>DATABASE_VERSION</code>?</strong> Se sim — o app foi atualizado desde a última vez que rodou — ele chama <code>onUpgrade()</code> com a versão antiga e a nova.</li>
+            </ul>
+            <p>Se nenhuma das duas condições for verdadeira (o banco já existe e a versão não mudou), <strong>nenhum dos dois métodos é chamado</strong> — o Android simplesmente abre o banco que já está lá. É por isso que só mudar o código do <code>onCreate()</code> não tem efeito nenhum num celular que já instalou o app antes: aquele método só roda uma vez, na criação.</p>
+        </section>
+
+        <section id="repository-manual" class="acc-arch">
+            <div class="file-tag">03_repository_manual.kt</div>
+            <h2>Repository sem Mágica</h2>
+            <p>Sem um ORM (como o Room), o Repository precisa fazer manualmente duas coisas que uma biblioteca normalmente faria por vocês: montar os dados para gravar, e reconstruir os objetos Kotlin a partir do que volta do banco.</p>
+
+            <div class="flow-diagram">
+                <div class="flow-label">Escrita</div>
+                <div class="flow-box a">Livro (Kotlin)</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-box b">ContentValues</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-box c">Tabela SQL</div>
+            </div>
+            <div class="flow-diagram">
+                <div class="flow-label">Leitura</div>
+                <div class="flow-box c">Tabela SQL</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-box b">Cursor</div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-box a">Livro (Kotlin)</div>
+            </div>
+
+            <h3>Duas peças que vocês vão escrever à mão</h3>
+            <ul>
+                <li><strong>ContentValues:</strong> um mapa chave-valor que representa uma linha a ser inserida — o equivalente manual do que uma anotação <code>@Insert</code> faria sozinha.</li>
+                <li><strong>Cursor:</strong> um "ponteiro" que percorre linha por linha do resultado de uma query — precisa ser percorrido com <code>moveToNext()</code> e fechado depois de usado (ou usando a função <code>use { }</code> do Kotlin, que fecha automaticamente).</li>
+            </ul>
+
+            <div class="tip-box">
+                <strong>Reaproveitando o que já foi ensinado:</strong> acesso a disco também é uma operação bloqueante. A mesma regra da aula de APIs se aplica — nada de <code>Cursor</code> ou <code>ContentValues</code> na Main Thread. O Repository continua usando <code>suspend fun</code> e <code>Dispatchers.IO</code>.
+            </div>
+        </section>
+
+        <section id="livecoding" class="acc-neutral">
+            <div class="file-tag">05_livecoding/</div>
+            <h2>Live Coding Passo a Passo — Biblioteca do Zero</h2>
+            <p>Vamos construir um cadastro de livros simples: título, autor e ano, salvos localmente. Pacotes: <code>model</code>, <code>database</code>, <code>repository</code>, <code>viewmodel</code> e <code>ui</code>.</p>
+
+            <div class="step-box" id="passo-0">
+                <h3>Passo 0 — Criando o Projeto no Android Studio <span class="step-progress">setup</span></h3>
+                <div class="warn-box"><strong>Este é um projeto novo, separado do da aula de APIs.</strong> A Biblioteca não continua a Pokédex — é um app diferente, do zero.</div>
+                <ol>
+                    <li>Abra o Android Studio e escolha <strong>New Project</strong>.</li>
+                    <li>Selecione o template <strong>Empty Activity</strong> (o do Compose, não o de Views/XML).</li>
+                    <li>Configure:
+                        <ul>
+                            <li><strong>Name:</strong> BibliotecaApp</li>
+                            <li><strong>Package name:</strong> <code>com.seunome.biblioteca</code></li>
+                            <li><strong>Language:</strong> Kotlin</li>
+                            <li><strong>Minimum SDK:</strong> API 24 (Android 7.0) ou superior</li>
+                        </ul>
+                    </li>
+                    <li>Clique em <strong>Finish</strong> e aguarde o Gradle sincronizar.</li>
+                    <li>
+                        <strong>Fixe as versões das bibliotecas.</strong> O template puxa sempre as versões mais recentes do dia, que variam conforme quando cada um instalou o Android Studio e costumam exigir um SDK que não está instalado na máquina. Abra <code>gradle/libs.versions.toml</code> e deixe o bloco <code>[versions]</code> assim:
+                        <div class="code-container" style="margin-top:0.6rem;">
+                            <div class="code-header">
+                                <span class="dots"><span class="dot d-api"></span><span class="dot d-db"></span><span class="dot d-async"></span></span>
+                                <span class="fname">gradle/libs.versions.toml</span>
+                                <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+                            </div>
+<pre><code>[versions]
+agp = "8.10.0"
+kotlin = "2.0.21"
+coreKtx = "1.15.0"
+junit = "4.13.2"
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
+lifecycleRuntimeKtx = "2.8.7"
+activityCompose = "1.9.3"
+composeBom = "2024.09.00"</code></pre>
+                        </div>
+                        <p style="margin-top:0.6rem;">Em seguida, abra <code>build.gradle.kts (Module :app)</code> e confirme que <code>compileSdk</code> e <code>targetSdk</code> estão em <strong>35</strong>. Clique em <strong>Sync Now</strong> e aguarde.</p>
+                    </li>
+                    <li>
+                        <strong>Adicione a dependência do ViewModel.</strong> Ainda no <code>build.gradle.kts (Module :app)</code>, acrescente esta linha ao final do bloco <code>dependencies { }</code> — sem apagar nenhuma das linhas <code>libs.xxx</code> que já existem:
+                        <div class="code-container" style="margin-top:0.6rem;">
+                            <div class="code-header">
+                                <span class="dots"><span class="dot d-api"></span><span class="dot d-db"></span><span class="dot d-async"></span></span>
+                                <span class="fname">build.gradle.kts (Module :app)</span>
+                                <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+                            </div>
+<pre><code>    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")</code></pre>
+                        </div>
+                        <p style="margin-top:0.6rem;">Sincronize novamente.</p>
+                    </li>
+                    <li>No painel <strong>Project</strong>, clique com o botão direito no pacote <code>com.seunome.biblioteca</code> → <strong>New &gt; Package</strong> — crie <code>model</code>, <code>database</code>, <code>repository</code>, <code>viewmodel</code> e <code>ui</code>.</li>
+                </ol>
+                <div class="tip-box"><strong>Nenhuma dependência de banco de dados é necessária.</strong> As classes <code>SQLiteOpenHelper</code>, <code>ContentValues</code> e <code>Cursor</code> já fazem parte do Android SDK. Essa é a grande diferença prática em relação ao Room, que exige um plugin extra e três dependências — o "custo" de não ter uma biblioteca fazendo o trabalho, mas também o motivo de o SQLite funcionar em qualquer projeto Android sem configuração alguma.</div>
+            </div>
+
+            <div class="tree-box">
+                <div class="tree-title">🗂️ Mapa de Pastas — onde cada arquivo dos próximos passos vai parar</div>
+                <p style="margin-top:0; font-size:0.9rem; color:var(--text-muted);">É assim que o painel <strong>Project</strong> do Android Studio deve ficar ao final da aula.</p>
+<pre class="tree-pre">app
+ └─ java
+     └─ com.seunome.biblioteca
+          ├─ model
+          │    └─ Livro.kt
+          ├─ database
+          │    └─ DatabaseHelper.kt
+          ├─ repository
+          │    └─ LivroRepository.kt
+          ├─ viewmodel
+          │    └─ BibliotecaViewModel.kt
+          ├─ ui
+          │    └─ BibliotecaScreen.kt
+          └─ MainActivity.kt  (já existe — só editar)</pre>
+                <div class="warn-box" style="margin-bottom:0;"><strong>Cuidado com a visão "Android" do painel Project:</strong> por padrão o Android Studio agrupa os pacotes numa exibição compacta. É a mesma estrutura, só visual diferente. Para ver exatamente como no mapa acima, troque o seletor no topo do painel de <strong>"Android"</strong> para <strong>"Project"</strong>.</div>
+            </div>
+
+            <div class="step-box" id="passo-1">
+                <h3>Passo 1 — O Modelo: Livro <span class="step-progress">1 de 7</span></h3>
+                <p><strong>Local:</strong> pacote <code>model</code> &nbsp;|&nbsp; <strong>Arquivo:</strong> <code>Livro.kt</code></p>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="dots"><span class="dot d-api"></span><span class="dot d-db"></span><span class="dot d-async"></span></span>
+                        <span class="fname">model/Livro.kt</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+                    </div>
+<pre><code>package com.seunome.biblioteca.model
+
+data class Livro(
+    val id: Long = 0,
+    val titulo: String,
+    val autor: String,
+    val ano: Int
+)</code></pre>
+                </div>
+            </div>
+
+            <div class="step-box" id="passo-2">
+                <h3>Passo 2 — O Banco: DatabaseHelper <span class="step-progress">2 de 7</span></h3>
+                <p><strong>Local:</strong> pacote <code>database</code> &nbsp;|&nbsp; <strong>Arquivo:</strong> <code>DatabaseHelper.kt</code></p>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="dots"><span class="dot d-api"></span><span class="dot d-db"></span><span class="dot d-async"></span></span>
+                        <span class="fname">database/DatabaseHelper.kt</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+                    </div>
+<pre><code>package com.seunome.biblioteca.database
+
+import android.content.Context
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteOpenHelper
+
+class DatabaseHelper(context: Context) :
+    SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
+
+    override fun onCreate(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE $TABLE_LIVROS (
+                $COL_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                $COL_TITULO TEXT NOT NULL,
+                $COL_AUTOR TEXT NOT NULL,
+                $COL_ANO INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
+
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        db.execSQL("DROP TABLE IF EXISTS $TABLE_LIVROS")
+        onCreate(db)
+    }
+
+    companion object {
+        const val DATABASE_NAME = "biblioteca.db"
+        const val DATABASE_VERSION = 1
+        const val TABLE_LIVROS = "livros"
+        const val COL_ID = "id"
+        const val COL_TITULO = "titulo"
+        const val COL_AUTOR = "autor"
+        const val COL_ANO = "ano"
+    }
+}</code></pre>
+                </div>
+            </div>
+
+            <div class="step-box" id="passo-3">
+                <h3>Passo 3 — Repository: Gravando com ContentValues <span class="step-progress">3 de 7</span></h3>
+                <p><strong>Local:</strong> pacote <code>repository</code> &nbsp;|&nbsp; <strong>Arquivo:</strong> <code>LivroRepository.kt</code></p>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="dots"><span class="dot d-api"></span><span class="dot d-db"></span><span class="dot d-async"></span></span>
+                        <span class="fname">repository/LivroRepository.kt (parte 1)</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+                    </div>
+<pre><code>package com.seunome.biblioteca.repository
+
+import android.content.ContentValues
+import com.seunome.biblioteca.database.DatabaseHelper
+import com.seunome.biblioteca.model.Livro
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+class LivroRepository(private val dbHelper: DatabaseHelper) {
+
+    suspend fun inserir(livro: Livro) = withContext(Dispatchers.IO) {
+        val db = dbHelper.writableDatabase
+        val valores = ContentValues().apply {
+            put(DatabaseHelper.COL_TITULO, livro.titulo)
+            put(DatabaseHelper.COL_AUTOR, livro.autor)
+            put(DatabaseHelper.COL_ANO, livro.ano)
+        }
+        db.insert(DatabaseHelper.TABLE_LIVROS, null, valores)
+    }
+}</code></pre>
+                </div>
+                <div class="tip-box"><strong>Repare:</strong> <code>ContentValues</code> é literalmente um mapa de "nome da coluna" para "valor" — é o que substitui a anotação <code>@Insert</code> do Room.</div>
+                <div class="tip-box">
+                    <strong>O que <code>db.insert()</code> gera por baixo dos panos:</strong> essa única linha de Kotlin equivale a rodar o seguinte SQL diretamente no banco:
+<pre style="margin-top:0.6rem; background:var(--code-bg); color:var(--code-text); padding:0.9rem 1.1rem; border-radius:6px; font-family:var(--font-mono); font-size:0.85rem; white-space:pre-wrap;">INSERT INTO livros (titulo, autor, ano)
+VALUES ('Dom Casmurro', 'Machado de Assis', 1899);</pre>
+                    Ver essa tradução ajuda a entender que <code>ContentValues</code> não é uma tecnologia nova — é só uma forma de montar esse <code>INSERT</code> sem concatenar strings SQL na mão (o que abriria brecha pra bugs e pra injeção de SQL).
+                </div>
+            </div>
+
+            <div class="step-box" id="passo-4">
+                <h3>Passo 4 — Repository: Lendo com Cursor <span class="step-progress">4 de 7</span></h3>
+                <p><strong>Local:</strong> pacote <code>repository</code> &nbsp;|&nbsp; <strong>Arquivo:</strong> <code>LivroRepository.kt</code> (continuação)</p>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="dots"><span class="dot d-api"></span><span class="dot d-db"></span><span class="dot d-async"></span></span>
+                        <span class="fname">repository/LivroRepository.kt (parte 2)</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+                    </div>
+<pre><code>    suspend fun listarTodos(): List&lt;Livro&gt; = withContext(Dispatchers.IO) {
+        val db = dbHelper.readableDatabase
+        val cursor = db.query(
+            DatabaseHelper.TABLE_LIVROS,
+            null, null, null, null, null,
+            "${DatabaseHelper.COL_ANO} DESC"
+        )
+        val livros = mutableListOf&lt;Livro&gt;()
+        cursor.use {
+            while (it.moveToNext()) {
+                livros.add(
+                    Livro(
+                        id = it.getLong(it.getColumnIndexOrThrow(DatabaseHelper.COL_ID)),
+                        titulo = it.getString(it.getColumnIndexOrThrow(DatabaseHelper.COL_TITULO)),
+                        autor = it.getString(it.getColumnIndexOrThrow(DatabaseHelper.COL_AUTOR)),
+                        ano = it.getInt(it.getColumnIndexOrThrow(DatabaseHelper.COL_ANO))
+                    )
+                )
+            }
+        }
+        livros
+    }</code></pre>
+                </div>
+                <div class="tip-box">
+                    <strong>O SQL equivalente a esse <code>db.query()</code>:</strong>
+<pre style="margin-top:0.6rem; background:var(--code-bg); color:var(--code-text); padding:0.9rem 1.1rem; border-radius:6px; font-family:var(--font-mono); font-size:0.85rem;">SELECT * FROM livros ORDER BY ano DESC;</pre>
+                    E o <code>Cursor</code> devolvido é como uma "planilha" que o Android entrega linha por linha — <code>moveToNext()</code> anda uma linha pra frente, e <code>getString</code>/<code>getInt</code> leem uma célula daquela linha. É exatamente esse "andar linha por linha e montar um objeto" que o Room automatiza quando ele devolve uma <code>List&lt;Entity&gt;</code> pronta.
+                </div>
+                <div class="tip-box"><strong><code>cursor.use { }</code>:</strong> essa função do Kotlin fecha o Cursor automaticamente ao final do bloco, mesmo se der exceção — o equivalente a um "try-finally" que fecha o recurso sozinho.</div>
+                <div class="warn-box"><strong>Onde a maioria se perde neste passo:</strong> os <code>null, null, null, null, null</code> antes do <code>"${DatabaseHelper.COL_ANO} DESC"</code> não são erro de digitação — são parâmetros que o <code>query()</code> exige nessa ordem (colunas, filtro, argumentos do filtro, agrupamento, filtro de grupo) e que não estamos usando hoje. Se o app crashar com "coluna não encontrada", o primeiro lugar a olhar é se o nome usado em <code>getColumnIndexOrThrow(...)</code> é <em>idêntico</em> ao definido em <code>DatabaseHelper</code> — maiúsculas/minúsculas incluídas.</div>
+            </div>
+
+            <div class="step-box" id="passo-5">
+                <h3>Passo 5 — O ViewModel: Estado e Ações <span class="step-progress">5 de 7</span></h3>
+                <p><strong>Local:</strong> pacote <code>viewmodel</code> &nbsp;|&nbsp; <strong>Arquivo:</strong> <code>BibliotecaViewModel.kt</code></p>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="dots"><span class="dot d-api"></span><span class="dot d-db"></span><span class="dot d-async"></span></span>
+                        <span class="fname">viewmodel/BibliotecaViewModel.kt</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+                    </div>
+<pre><code>package com.seunome.biblioteca.viewmodel
+
+import android.app.Application
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.seunome.biblioteca.database.DatabaseHelper
+import com.seunome.biblioteca.model.Livro
+import com.seunome.biblioteca.repository.LivroRepository
+import kotlinx.coroutines.launch
+
+sealed interface BibliotecaUiState {
+    object Loading : BibliotecaUiState
+    data class Success(val livros: List&lt;Livro&gt;) : BibliotecaUiState
+    data class Error(val message: String) : BibliotecaUiState
+}
+
+class BibliotecaViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository = LivroRepository(DatabaseHelper(application))
+
+    var uiState: BibliotecaUiState by mutableStateOf(BibliotecaUiState.Loading)
+        private set
+
+    init { carregarLivros() }
+
+    fun carregarLivros() {
+        viewModelScope.launch {
+            uiState = BibliotecaUiState.Loading
+            uiState = try {
+                BibliotecaUiState.Success(repository.listarTodos())
+            } catch (e: Exception) {
+                BibliotecaUiState.Error(e.message ?: "Erro ao acessar o banco de dados.")
+            }
+        }
+    }
+
+    fun salvarLivro(titulo: String, autor: String, ano: Int) {
+        viewModelScope.launch {
+            repository.inserir(Livro(titulo = titulo, autor = autor, ano = ano))
+            carregarLivros()
+        }
+    }
+}</code></pre>
+                </div>
+                <div class="tip-box"><strong>Por que <code>AndroidViewModel</code>?</strong> O <code>DatabaseHelper</code> precisa de um <code>Context</code> para existir — <code>AndroidViewModel</code> recebe a <code>Application</code> automaticamente, sem precisar de uma Factory manual.</div>
+            </div>
+
+            <div class="step-box" id="passo-6">
+                <h3>Passo 6 — A Tela: Formulário e Lista <span class="step-progress">6 de 7</span></h3>
+                <p><strong>Local:</strong> pacote <code>ui</code> &nbsp;|&nbsp; <strong>Arquivo:</strong> <code>BibliotecaScreen.kt</code></p>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="dots"><span class="dot d-api"></span><span class="dot d-db"></span><span class="dot d-async"></span></span>
+                        <span class="fname">ui/BibliotecaScreen.kt</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+                    </div>
+<pre><code>package com.seunome.biblioteca.ui
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.seunome.biblioteca.viewmodel.BibliotecaUiState
+import com.seunome.biblioteca.viewmodel.BibliotecaViewModel
+
+@Composable
+fun BibliotecaScreen(viewModel: BibliotecaViewModel = viewModel()) {
+    var titulo by remember { mutableStateOf("") }
+    var autor by remember { mutableStateOf("") }
+    var ano by remember { mutableStateOf("") }
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        OutlinedTextField(value = titulo, onValueChange = { titulo = it }, label = { Text("Título") }, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(value = autor, onValueChange = { autor = it }, label = { Text("Autor") }, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(value = ano, onValueChange = { ano = it }, label = { Text("Ano") }, modifier = Modifier.fillMaxWidth())
+
+        Button(
+            onClick = {
+                val anoInt = ano.toIntOrNull() ?: return@Button
+                viewModel.salvarLivro(titulo, autor, anoInt)
+                titulo = ""; autor = ""; ano = ""
+            },
+            modifier = Modifier.padding(top = 12.dp)
+        ) { Text("Salvar Livro") }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        when (val state = viewModel.uiState) {
+            is BibliotecaUiState.Loading -&gt; CircularProgressIndicator()
+            is BibliotecaUiState.Error -&gt; Text("Erro: ${state.message}")
+            is BibliotecaUiState.Success -&gt; LazyColumn {
+                items(state.livros, key = { it.id }) { livro -&gt;
+                    ListItem(
+                        headlineContent = { Text(livro.titulo) },
+                        supportingContent = { Text("${livro.autor} · ${livro.ano}") }
+                    )
+                }
+            }
+        }
+    }
+}</code></pre>
+                </div>
+            </div>
+
+            <div class="step-box" id="passo-7">
+                <h3>Passo 7 — MainActivity: Ligando Tudo <span class="step-progress">7 de 7</span></h3>
+                <p><strong>Local:</strong> raiz do pacote <code>com.seunome.biblioteca</code> &nbsp;|&nbsp; <strong>Arquivo:</strong> <code>MainActivity.kt</code> (já existe, criado pelo template — só editar)</p>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="dots"><span class="dot d-api"></span><span class="dot d-db"></span><span class="dot d-async"></span></span>
+                        <span class="fname">MainActivity.kt</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+                    </div>
+<pre><code>package com.seunome.biblioteca
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
+import com.seunome.biblioteca.ui.BibliotecaScreen
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MaterialTheme {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    BibliotecaScreen()
+                }
+            }
+        }
+    }
+}</code></pre>
+                </div>
+                <div class="warn-box"><strong>Sem esse passo, nada aparece na tela:</strong> é a chamada <code>BibliotecaScreen()</code> dentro de <code>setContent { }</code> que liga todo o código escrito até aqui à tela do celular. Rode o app agora (▶ verde no topo, com um emulador selecionado no Device Manager).</div>
+            </div>
+
+            <div class="checklist">
+                <h3>Sua Biblioteca está funcionando se…</h3>
+                <ul>
+                    <li>Cadastrar um livro faz ele aparecer na lista imediatamente, sem precisar reabrir o app.</li>
+                    <li>Fechar e reabrir o app mantém os livros cadastrados (o banco persistiu de verdade).</li>
+                    <li>Abrindo <strong>View &gt; Tool Windows &gt; App Inspection &gt; Database Inspector</strong> (com o app rodando), aparece o arquivo <code>biblioteca.db</code> com a tabela <code>livros</code> populada.</li>
+                    <li>Nenhuma classe de <code>ui</code> ou <code>viewmodel</code> chama <code>ContentValues</code> ou <code>Cursor</code> diretamente — só o Repository.</li>
+                    <li>Nenhuma dependência de persistência foi adicionada ao <code>build.gradle.kts</code>.</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="erros" class="acc-fix">
+            <div class="file-tag">06_troubleshooting.md</div>
+            <h2>Erros Comuns e Como Resolver</h2>
+            <p>Se algo der errado, procure aqui antes de recomeçar o projeto do zero.</p>
+
+            <div class="erro-item">
+                <div class="erro-titulo">requires libraries and applications that depend on it to compile against version 36 (ou 37) or later</div>
+                <div class="erro-corpo">
+                    <p><strong>O que significa:</strong> alguma biblioteca do projeto é mais nova que o <code>compileSdk</code> configurado e exige um SDK que provavelmente nem está instalado na máquina.</p>
+                    <p><strong>Solução:</strong> confira se o <code>gradle/libs.versions.toml</code> está exatamente como no Passo 0. A causa quase sempre é uma versão mais nova que a fixada — normalmente <code>coreKtx</code>, <code>activityCompose</code> ou <code>lifecycleRuntimeKtx</code>.</p>
+                    <p>Se o erro voltar depois de corrigido, procure <em>entradas duplicadas</em> no arquivo (por exemplo, um <code>coreKtxVersion</code> além do <code>coreKtx</code>). Elas costumam ser deixadas pelo "AGP Upgrade Assistant" — dispense essa notificação quando ela aparecer.</p>
+                </div>
+            </div>
+
+            <div class="erro-item">
+                <div class="erro-titulo">Configuration contains AndroidX dependencies, but the android.useAndroidX property is not enabled</div>
+                <div class="erro-corpo">
+                    <p><strong>Solução:</strong> abra o arquivo <code>gradle.properties</code> (raiz do projeto, junto do <code>settings.gradle.kts</code>) e adicione a linha <code>android.useAndroidX=true</code>. Depois clique em <strong>Sync Now</strong>.</p>
+                </div>
+            </div>
+
+            <div class="erro-item">
+                <div class="erro-titulo">no such table: livros (ou no such column)</div>
+                <div class="erro-corpo">
+                    <p><strong>Causa:</strong> o método <code>onCreate()</code> só roda uma vez, quando o arquivo do banco é criado pela primeira vez. Se você mudou o SQL do <code>CREATE TABLE</code> depois de já ter rodado o app, o banco no aparelho continua com a estrutura antiga.</p>
+                    <p><strong>Solução rápida (em desenvolvimento):</strong> desinstale o app do emulador e rode de novo — isso apaga o banco e força o <code>onCreate()</code> a rodar outra vez.</p>
+                    <p><strong>Solução correta:</strong> aumente o número em <code>DATABASE_VERSION</code>. Isso faz o Android chamar o <code>onUpgrade()</code>, que no nosso código apaga e recria a tabela.</p>
+                </div>
+            </div>
+
+            <div class="erro-item">
+                <div class="erro-titulo">CursorIndexOutOfBoundsException ou "column ... does not exist"</div>
+                <div class="erro-corpo">
+                    <p><strong>Causa:</strong> o nome de coluna usado em <code>getColumnIndexOrThrow(...)</code> não bate exatamente com o nome definido no <code>CREATE TABLE</code>. A comparação diferencia maiúsculas e minúsculas.</p>
+                    <p><strong>Solução:</strong> por isso declaramos os nomes como constantes (<code>COL_TITULO</code>, <code>COL_AUTOR</code>...) no <code>companion object</code> — use sempre a constante, nunca o texto digitado à mão. Assim o compilador avisa se houver erro de digitação.</p>
+                </div>
+            </div>
+
+            <div class="erro-item">
+                <div class="erro-titulo">O app trava por alguns segundos ao salvar ou listar</div>
+                <div class="erro-corpo">
+                    <p><strong>Causa:</strong> a operação de banco está rodando na Main Thread.</p>
+                    <p><strong>Solução:</strong> confirme que todas as funções do Repository são <code>suspend</code> e que o corpo delas está dentro de <code>withContext(Dispatchers.IO) { ... }</code>. Acesso a disco é bloqueante, exatamente como acesso a rede.</p>
+                </div>
+            </div>
+
+            <div class="erro-item">
+                <div class="erro-titulo">Salvo um livro, mas ele não aparece na lista</div>
+                <div class="erro-corpo">
+                    <p><strong>Causa:</strong> diferente do Room, o SQLite manual não avisa ninguém quando os dados mudam. A lista só é atualizada se alguém pedir de novo.</p>
+                    <p><strong>Solução:</strong> confirme que <code>salvarLivro()</code> chama <code>carregarLivros()</code> logo depois de inserir. É essa chamada que reconsulta o banco e atualiza o estado da tela.</p>
+                    <p><strong>Guarde essa limitação:</strong> ela é justamente um dos problemas que o Room resolve automaticamente com <code>Flow</code>, na próxima aula.</p>
+                </div>
+            </div>
+
+            <div class="erro-item">
+                <div class="erro-titulo">Unresolved reference (arquivo criado na pasta errada)</div>
+                <div class="erro-corpo">
+                    <p><strong>Causa:</strong> o painel do Android Studio agrupa pastas que contêm apenas uma subpasta, o que facilita criar um arquivo dentro de <code>ui/theme</code> por engano.</p>
+                    <p><strong>Solução:</strong> arraste o arquivo para a pasta correta e clique em <strong>Refactor</strong> quando o Android Studio perguntar sobre o <code>package</code>. Confirme depois que a primeira linha do arquivo corresponde à pasta onde ele está.</p>
+                </div>
+            </div>
+
+            <div class="erro-item">
+                <div class="erro-titulo">Quero ver o banco por dentro para conferir se salvou</div>
+                <div class="erro-corpo">
+                    <p>Não é um erro, mas é a ferramenta que mais ajuda a diagnosticar. Com o app rodando, abra <strong>View &gt; Tool Windows &gt; App Inspection &gt; Database Inspector</strong>. Você verá o arquivo <code>biblioteca.db</code>, a tabela <code>livros</code> e o conteúdo real de cada linha — inclusive em tempo real, conforme você insere dados pelo app.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="atividade-cta" class="cta-section">
+            <div class="terminal-window">
+                <div class="terminal-titlebar">
+                    <span class="dot d-api"></span>
+                    <span class="dot d-db"></span>
+                    <span class="dot d-async"></span>
+                    <span class="filename">~/proxima-missao</span>
+                </div>
+                <div class="terminal-body">
+                    <p class="term-line"><span class="term-prompt">$</span> cat proxima_missao.md</p>
+                    <p class="term-output">Hoje vocês criaram um banco de dados do zero, sem nenhuma biblioteca de persistência. Agora é a vez de vocês aplicarem o mesmo padrão — SQLiteOpenHelper, ContentValues, Cursor — num app com um tema escolhido por vocês.</p>
+                    <p class="term-line"><span class="term-prompt">$</span></p>
+                    <a class="term-cta" href="https://rclepf.github.io/PersistenciaAndroid/Atividade_SQLite_Nativo.pdf" download="">./baixar-atividade.pdf ↵</a>
+                    <p class="cta-meta">O PDF contém a missão completa, os requisitos obrigatórios e a rubrica de correção.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer>
+        <p>Desenvolvimento Android Moderno © 2026 · SQLite Nativo + Repository</p>
+    </footer>
+
+    <script>
+        function copyCode(btn) {
+            const pre = btn.closest('.code-container').querySelector('pre');
+            navigator.clipboard.writeText(pre.innerText).then(() => {
+                const original = btn.textContent;
+                btn.textContent = 'Copiado!';
+                setTimeout(() => { btn.textContent = original; }, 1500);
+            });
+        }
+
+        const navToggle = document.getElementById('navToggle');
+        const navLinks = document.getElementById('navLinks');
+        navToggle.addEventListener('click', () => {
+            const isOpen = navLinks.classList.toggle('open');
+            navToggle.setAttribute('aria-expanded', isOpen);
+        });
+
+        const sections = document.querySelectorAll('main > section');
+        const links = document.querySelectorAll('.step-nav-link');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.getAttribute('id');
+                    links.forEach(link => {
+                        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+                    });
+                }
+            });
+        }, { rootMargin: '-45% 0px -50% 0px' });
+        sections.forEach(sec => observer.observe(sec));
+    </script>
+
+
+
+</body></html>

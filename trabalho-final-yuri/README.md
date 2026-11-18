@@ -1,0 +1,1 @@
+Eu genuinamente não entendo como o Yuri fez tanta coisa slk parabéns Yuri. Não entendo o seu código mas vou deixá-lo aqui de qualquer forma. Tamo junto.

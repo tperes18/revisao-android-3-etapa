@@ -1,0 +1,1 @@
+Como não consigo rodar Android Studio no meu computador pessoal, aqui estão apenas os arquivos essenciais - sem incluir dependências.
